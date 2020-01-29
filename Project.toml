@@ -1,0 +1,13 @@
+name = "VisualGrowthDynamics"
+uuid = "2bd58e1e-1b99-47b5-a98e-b1d95625cfec"
+authors = ["Stephan Kleinboelting <skleinbo@thp.uni-koeln.de>"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

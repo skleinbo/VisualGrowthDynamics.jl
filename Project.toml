@@ -1,15 +1,17 @@
 name = "VisualGrowthDynamics"
 uuid = "2bd58e1e-1b99-47b5-a98e-b1d95625cfec"
 authors = ["Stephan Kleinboelting <skleinbo@thp.uni-koeln.de>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+Makie = "≥ 0.11"
 julia = "1"
 
 [extras]

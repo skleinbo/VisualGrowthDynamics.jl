@@ -73,12 +73,11 @@ function AbstractPlotting.plot!(p::Plot(TumorConfiguration{CubicLattice{Int64}})
 	L = state.lattice.Na
 	# @show to_value(p[:color])
 
-	@show haskey(p.attributes, :plane)
 	if haskey(p.attributes, :plane)
 		P = to_value(p[:plane])
 		#B = Lattices.intersect_lattice_with_plane(state.lattice, P)
 		indices = product(1:L, 1:L, 1:L)
-		B = BitArray(Lattices.euclidean_dist_to_plane(SVector{3}(I), P) <= 1/2 for I in indices)
+		B = BitArray(Lattices.euclidean_dist(SVector{3}(I), P) <= 1/2 for I in indices)
 		#@show size(B)
 		flt = (state.lattice.data .!= 0) .& B
 

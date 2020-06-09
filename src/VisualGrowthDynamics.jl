@@ -1,20 +1,15 @@
 module VisualGrowthDynamics
 
-
-# export plot!, plot
 import Base.Iterators: product
 import StaticArrays: SVector
 import GrowthDynamics: TumorConfigurations, Lattices
 import .TumorConfigurations: TumorConfiguration
 import .Lattices: HexagonalLattice, CubicLattice, neighbors
-import AbstractPlotting: Plot, plot!, default_theme, to_value
-import AbstractPlotting
 
-# import GeometryTypes: GLNormalMesh, Point2f0
 using GeometryBasics
 using Colors
-# using GLMakie
-#import Makie: meshscatter!, lift, SceneLike, Scene, Theme, Attributes, Node, cam3d, cameracontrols, update_cam!
+
+import AbstractPlotting: Plot, plot!, default_theme, to_value
 using Makie
 
 include("ColorFunctions.jl")

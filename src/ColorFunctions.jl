@@ -30,7 +30,7 @@ module ColorFunctions
 	function color_phylo!(C::ColorMapping, state; depth=1,
 		 palette=default_palette, transition=(x::Color, d)->x)
 
-		P = state.Phylogeny
+		P = state.phylogeny
 
 		## Find all vertices which are at most `depth` removed from the root.
 		## Each of which is going to be assigned its own color.
@@ -68,16 +68,17 @@ module ColorFunctions
 		for ringv in ring
 			nb = neighborhood(P, ringv, nv(P), dir=:in)
 			g_parent = state.meta.genotypes[ringv]
+			color_range = range(C.inner[g_parent], colorant"white", length=round(Int, 1.5*length(nb)))
 			for (d,n) in enumerate(nb)
 				g = state.meta.genotypes[n]
-				newcolor = range(C.inner[g_parent], colorant"white", length=round(Int, 1.5*length(nb)))[d]
+				newcolor = color_range[d]
 				#oc = RGBA(C.inner[g_parent])
 				#newcolor = RGBA(oc.r, oc.g, oc.b, clamp( oc.alpha*(1-0.3), 0., 1.))
 				push!(C.full, g => newcolor)
 			end
 		end
 
-		map(reshape(state.lattice.data, length(state.lattice.data))) do s
+		map(state.lattice.data) do s
 			C.full[s]
 		end
 	end
@@ -86,7 +87,7 @@ module ColorFunctions
 	function color_phylo_by_genomic_distance!(C::ColorMapping, state; depth=1,
 		 palette=reverse(colormap("Blues", 20))
 		)
-		P = state.Phylogeny
+		P = state.phylogeny
 
 		C.full = copy(C.inner)
 
@@ -96,10 +97,12 @@ module ColorFunctions
 			push!(C.full, state.meta.genotypes[j] => palette[min(l, 20)] )
 		end
 
-		map(reshape(state.lattice.data, state.lattice.Na^2)) do s
+		map(state.lattice.data) do s
 			C.full[s]
 		end
 	end
+	color_phylo_by_genomic_distance(state; depth=1, palette=default_palette, kwargs...) = color_phylo_by_genomic_distance!(min_colors(palette), state; depth, palette, kwargs...)
+
 	function color_generic(state;palette=rand(RGB,maximum(state.lattice.data)))
 		v0 = state.lattice.data
 		map(v0) do x
@@ -108,7 +111,7 @@ module ColorFunctions
 			else
 				RGBA{Float32}(palette[x])
 			end
-		end |> X->reshape(X, length(v0))
+		end
 	end
 
 	function color_genotype(state, g; color=colorant"blue")
@@ -120,7 +123,7 @@ module ColorFunctions
 			else
 				color
 			end
-		end |> X->reshape(X, length(v0))
+		end
 	end
 
 	function color_neighbors(state, I::CartesianIndex)

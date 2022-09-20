@@ -6,9 +6,9 @@ import StaticArrays: SVector
 import GrowthDynamics
 import GrowthDynamics: TumorConfigurations, Lattices
 import .TumorConfigurations: TumorConfiguration
-import .Lattices: HexagonalLattice, CubicLattice, neighbors, midpoint
+import .Lattices: HexagonalLattice, CubicLattice, FCCLattice, RealLattice, dimension, neighbors, midpoint, spacings
 
-import LightGraphs: neighborhood
+import Graphs: neighborhood
 
 import Makie: plot!, default_theme, Attributes, to_value, SceneLike, lift, @lift, meshscatter!, arrows!, @recipe
 using Makie
@@ -22,7 +22,8 @@ include("ColorFunctions.jl")
 DEFAULT_ATTRIBUTES = Attributes(
     markersize=1,
     size=(800,800),
-    color=ColorFunctions.color_phylo
+    colorfunc=nothing,
+    colormap=:watermelon
 )
 
 @recipe(TumorPlot) do scene
@@ -30,61 +31,14 @@ DEFAULT_ATTRIBUTES = Attributes(
         Attributes(
             plane = nothing,
             genotype = nothing,
-            radius = 0.0
+            radius = 0.0,
+            shell = nothing
         )
     )
 end
-
-function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{HexagonalLattice{Int64}}}})
-    state = to_value(p[1])
-    L = state.lattice.Na
-
-    hex_vertices = map([
-            # Vertices of a hex with flat edge down
-            Point2f0(1,0),
-            Point2f0(cos(pi/3),-sin(pi/3)),
-            Point2f0(-cos(pi/3),-sin(pi/3)),
-            Point2f0(-1,0),
-            Point2f0(-cos(pi/3),sin(pi/3)),
-            Point2f0(cos(pi/3),sin(pi/3))
-            ]/L/Float32(cos(pi/6))) do x
-                # Rotation by π/6 --> pointy edge down
-                [Point2f0(cos(pi/6),sin(pi/6)) Point2f0(-sin(pi/6),cos(pi/6))]*x
-            end
-
-    hex_mesh=GeometryBasics.mesh(hex_vertices)
-    off = (sqrt(5)-sqrt(3))/2
-
-    hex_positions = reshape(Point2f0[Point2f0(
-        2*(q+ifelse(r%2==0,0.,1/2))/L-1.0,
-        2*(r+1/2+off/2*ifelse(r==0,0.,-r))/L-1.0)
-         for (r,q) in Iterators.product(0:L-1,0:L-1)], L^2)
-
-    meshscatter!(p, hex_positions, marker=hex_mesh, markersize=1,
-         color=lift(to_value(p[:color]), Node(state)),
-        shading=false, raw=false)
-
-    p
-end
-
-## Cubic lattice
-
-function default_theme(scene, ::TumorPlot{Tuple{<:TumorConfiguration{CubicLattice{Int64, A}}}}) where A
-    @info "Test"
-
-end
-
-
-function plot!(p::TumorPlot{Tuple{<:TumorConfiguration{CubicLattice{Int64, A}}}}) where A
+function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:RealLattice{Int64}
     state = p[1]
     sz = lift(s->size(s.lattice), state)
-
-    # if !haskey(p.attributes, :genotype)
-    #     p.attributes[:genotype] = nothing
-    # end
-    # if !haskey(p.attributes, :radius)
-    #     p.attributes[:radius] = 0.0
-    # end
 
     geno_filter = lift(state, p[:genotype]) do state, genotype
         if isnothing(genotype) || iszero(genotype)
@@ -98,23 +52,18 @@ function plot!(p::TumorPlot{Tuple{<:TumorConfiguration{CubicLattice{Int64, A}}}}
     indices = @lift product(map(i->1:i, $sz)...)
 
     _BP = lift(p[:plane], indices) do P, indices
-        if isa(P, Lattices.Plane)
-            # arrow_pos = lift(P->fill(Point3f0(P.p), 3), P)
-            # arrow_dir = lift(P->10.0*[P.u, P.v, P.w], P)
-            # arrows!(p, arrow_pos, arrow_dir, arrowsize=0.1, arrowlength=10, linewidth=3)
-
+        if dimension(state[].lattice)==3 && isa(P, Lattices.Plane)
             BitArray(Lattices.euclidean_dist(SVector{3}(I), P) <= 1/2 for I in indices)
-            #@show size(B)
-
         else
             fill(true, sz[])
         end
     end
 
     mp = midpoint(state[].lattice)
+    a = spacings(state[].lattice)[1]
     _BR = lift(p[:radius], indices) do r, indices
         if !iszero(r)
-            BitArray(Lattices.dist(state[].lattice, CartesianIndex(I), mp) <= r for I in indices)
+            BitArray(r-a/2 <= Lattices.dist(state[].lattice, CartesianIndex(I), mp) < r+a/2 for I in indices)
         else
             fill(true, sz[])
         end
@@ -129,34 +78,63 @@ function plot!(p::TumorPlot{Tuple{<:TumorConfiguration{CubicLattice{Int64, A}}}}
         @warn "No cells to draw."
     end
 
-    positions = @lift Point3f0.(Tuple.(findall(x->x==true, $flt)))
+    positions = @lift [ Lattices.coord($state.lattice, x) for x in CartesianIndices($flt) if $flt[x] ]
 
-    # colors = lift( (color, state, flt)->color(state)[reshape(flt, length(flt))],
-    #  	p[:color], state, flt)
-    color_func = p[:color]
-    colors = lift(color_func, state, flt) do color_func, state, flt
-        begin
-            c = color_func(state)[flt]
-            reshape(c, length(c))
+    colorfunc = p[:colorfunc]
+    color = haskey(p, :color) ? p[:color] : Observable(nothing)
+    if typeof(colorfunc[]) <: Function
+        color = lift(colorfunc, state, flt) do colorfunc, state, flt
+            begin
+                c = colorfunc(state)[flt]
+                reshape(c, length(c))
+            end
+        end
+    elseif isnothing(colorfunc[]) && isnothing(color[])
+        color = lift(state, flt) do state, flt
+            reshape(state.lattice.data[flt], :)
+        end
+    else
+        color = lift(p[:color], flt) do color, flt
+            reshape(color[flt], :)
         end
     end
+    p[:color] = color
 
-    # cubemeshes = @lift begin
-    # 	map(enumerate($positions[$flt])) do (j,p)
-    # 		m = normal_mesh(Rect(Vec3f0(p), Vec3f0(1)))
-    # 		pointmeta(m; color=fill(RGBAf0($colors[j]), length(coordinates(m))))
-    # 	end
-    # end
-    # mesh_to_draw = @lift merge($cubemeshes)
-    # mesh!(p, mesh_to_draw)
-    cube = Rect(Vec3f0(0), Vec3f0(1))
-    meshscatter!(p, positions, marker=cube, markersize=1,
-          color=colors, raw=false)
+    _mesh = meshvertex(typeof(state[].lattice))
+    
+    # meshscatter!(p, positions, marker=_mesh, markersize=1,
+    # color=RGBA(0.0,0.0,0.0,1.0),
+    # shading=true, raw=false,strokewidth=5,strokecolor=:black
+    # )
+    meshscatter!(p, positions, marker=_mesh, markersize=1.0,
+    color=color, colormap=p[:colormap],
+    shading=true, raw=false,strokewidth=5,strokecolor=:black
+    )
 
     p
 end
 
+## Cubic lattice
 
+function default_theme(scene, ::TumorPlot{Tuple{TumorConfiguration{CubicLattice{Int64, A}}}}) where A
+end
+
+meshvertex(::Type{HexagonalLattice{A,B}}) where {A,B} = GeometryBasics.mesh(map([
+    # Vertices of a hex with flat edge down
+    Point2f0(1,0),
+    Point2f0(cos(pi/3),-sin(pi/3)),
+    Point2f0(-cos(pi/3),-sin(pi/3)),
+    Point2f0(-1,0),
+    Point2f0(-cos(pi/3),sin(pi/3)),
+    Point2f0(cos(pi/3),sin(pi/3))
+    ]/2/Float32(cos(pi/6))) do x
+        # Rotation by π/6 --> pointy edge down
+        [Point2f0(cos(pi/6),sin(pi/6)) Point2f0(-sin(pi/6),cos(pi/6))]*x
+    end
+    )
+
+meshvertex(::Type{CubicLattice{A,B}}) where {A,B} = GeometryBasics.mesh(Rect(Vec3f0(0), Vec3f0(1)))
+meshvertex(::Type{FCCLattice{A,B}}) where {A,B} = GeometryBasics.Sphere(Point3f(0), 1/4)
 
 
 

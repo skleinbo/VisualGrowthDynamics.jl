@@ -1,24 +1,25 @@
 module VisualGrowthDynamics
 
 import Base.Iterators: product
-import StaticArrays: SVector
-
+using Colors
+using GeometryBasics
 import GrowthDynamics
 import GrowthDynamics: TumorConfigurations, Lattices
 import GrowthDynamics.Lattices: midpoint, midpointcoord
-import .TumorConfigurations: TumorConfiguration
-import .Lattices: HexagonalLattice, CubicLattice, FCCLattice, RealLattice, dimension, neighbors, midpoint, spacings
-
 import Graphs: neighborhood
-
+import .Lattices: HexagonalLattice, CubicLattice, FCCLattice, RealLattice, Plane
+import .Lattices: coord, dimension, neighbors, midpoint, spacings
+import LinearAlgebra: dot, normalize
 import Makie: plot!, default_theme, Attributes, to_value, SceneLike, lift, @lift, meshscatter!, arrows!, @recipe
 using Makie
-using GeometryBasics
-using Colors
-
+import StaticArrays: SVector
+import .TumorConfigurations: TumorConfiguration
 
 include("ColorFunctions.jl")
 
+function project(P::Plane, v::Point3f)
+    Point2f(dot(P.u, v), dot(P.v, v))
+end
 
 DEFAULT_ATTRIBUTES = Attributes(
     markersize=1,
@@ -84,7 +85,13 @@ function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:Real
         @warn "No cells to draw."
     end
 
-    positions = @lift [ Lattices.coord($state.lattice, x) for x in CartesianIndices($flt) if $flt[x] ]
+    positions = @lift begin 
+        v = [ Lattices.coord($state.lattice, x) for x in CartesianIndices($flt) if $flt[x] ]
+        if !isnothing(p[:plane][])
+            v = map(x->project(p[:plane][], x), v)
+        end
+        v
+    end
 
     colorfunc = p[:colorfunc]
     color = haskey(p, :color) ? p[:color] : Observable(nothing)
@@ -131,11 +138,27 @@ end
 xyz_string_to_point3(s::AbstractString) = Point3(tryparse.(Float64, split(s, ',')))
 
 function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where A<:RealLattice{Int}
-    fig = Figure()
+    state_obs = Observable(state)
+
+    plane_dir = Observable(Vec3f(0,0,1))
+    plane_offset = Observable(dot(Lattices.midpointcoord(state_obs[].lattice),plane_dir[]))
+    plane_origin = @lift $plane_offset*$plane_dir
+    plane = @lift Lattices.Plane($plane_origin, $plane_dir)
+
+    fig = Figure(backgroundcolor=:lightgray)
     grid_plots = fig[1,1] = GridLayout()
     grid_controls = fig[1,2] = GridLayout(;tellheight=false)
-    tumor_ax, tumor_plot = tumorplot(grid_plots[1,1], Observable(state), args...; kwargs...)
+    tumor_ax = Axis3(grid_plots[1,1], aspect=:data)
+    tumor_plot = tumorplot!(tumor_ax, state_obs, args...; kwargs...)
+    limits_origin = (0,0,0)
+    limits_lengths = Tuple(coord(state.lattice, size(state.lattice)))
+    limits!(tumor_ax, Rect(limits_origin..., limits_lengths...))
+
+    slice_ax = Axis(grid_plots[2,1], aspect=1)
+    slice_plot = tumorplot!(slice_ax, state_obs; plane)
     
+    # plane = 
+
     ## Radius filter controls
     Label(grid_controls[1,1], text="Filter radius", tellheight=false)
     toggle_radius = Toggle(grid_controls[1,2])
@@ -180,10 +203,34 @@ function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where 
     btn_plane_x = Button(grid_controls[4,2], label="x")
     btn_plane_y = Button(grid_controls[4,3], label="y")
     btn_plane_z = Button(grid_controls[4,4], label="z")
+    btns_plane = [btn_plane_x, btn_plane_y, btn_plane_z]
+    btn_plane_z.clicks[] = 1
     # Label(grid_controls[5,1], text="Origin")
     Label(grid_controls[5,1], text="Offset")
-    text_plane_offset = Textbox(grid_controls[5,2], placeholder="0", validator=Float64)
-    
+    text_plane_offset = Textbox(grid_controls[5,2], stored_string=string(plane_offset[]), validator=Float32)
+    btn_offset_plus = Button(grid_controls[5,3], label="+")
+    btn_offset_minus = Button(grid_controls[5,4], label="-")
+    on(btn_offset_plus.clicks) do _
+        o = (plane_offset[] += 1)
+        text_plane_offset.stored_string[] = string(o)
+        text_plane_offset.displayed_string[] = string(o)
+    end
+    on(btn_offset_minus.clicks) do _
+        o = (plane_offset[] -= 1)
+        text_plane_offset.stored_string[] = string(o)
+        text_plane_offset.displayed_string[] = string(o)
+    end
+    onany(getproperty.(btns_plane, :clicks)..., text_plane_offset.stored_string) do bx,by,bz,o
+        plane_offset[] = parse(Float32, o)
+        v = Vec3f(0,0,0)
+        dir_label = ""
+        bx%2==1 && (v += Vec3f(1,0,0); dir_label*="x" )
+        by%2==1 && (v += Vec3f(0,1,0); dir_label*="y")
+        bz%2==1 && (v += Vec3f(0,0,1); dir_label*="z")
+        plane_dir[] = normalize(v)
+        @info "New slice plane $(plane_dir[])"
+        # slice_plot.
+    end
 
     return fig
 end

@@ -24,8 +24,7 @@ end
 DEFAULT_ATTRIBUTES = Attributes(
     markersize=1,
     size=(800,800),
-    colorfunc=nothing,
-    colormap=:watermelon
+    colorfunc=ColorFunctions.color_phylo
 )
 
 @recipe(TumorPlot, state) do scene
@@ -94,7 +93,6 @@ function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:Real
     end
 
     colorfunc = p[:colorfunc]
-    color = haskey(p, :color) ? p[:color] : Observable(nothing)
     if typeof(colorfunc[]) <: Function
         color = lift(colorfunc, state, flt) do colorfunc, state, flt
             begin
@@ -120,7 +118,7 @@ function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:Real
     # shading=true, raw=false,strokewidth=5,strokecolor=:black
     # )
     meshscatter!(p, positions, marker=_mesh, markersize=1.0,
-    color=color, colormap=p[:colormap],
+    color=color,
     shading=true, raw=false,strokewidth=5,strokecolor=:black
     )
 
@@ -232,7 +230,7 @@ function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where 
         # slice_plot.
     end
 
-    return fig
+    return fig, tumor_plot
 end
 
 

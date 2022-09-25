@@ -2,6 +2,7 @@ module ColorFunctions
 	using Colors
 	import ..Lattices: intersect_lattice_with_plane, dimension, density
 	using Graphs
+	import GrowthDynamics.TumorConfigurations: gindex, TumorConfiguration
 
 	is_leaf(g::SimpleDiGraph, s) = !mapreduce(|, vertices(g)) do in; has_edge(g, in, s) end
 
@@ -27,36 +28,43 @@ module ColorFunctions
 	    convert(T, HSV(hsv.h, min(hsv.s * (1-0*p), 1.0), min(hsv.v * (1+p), 1.0) ))
 	end
 
-	function color_phylo!(C::ColorMapping{T}, state; depth=2,
+
+	"""
+		color_lineages!(C, state; roots=[1])
+	
+	Assign to each genotype in `roots` a distinct color from `palette`;
+	assign all children the same color as their root.
+	Previous assignments are kept.
+
+	Expects a `ColorMapping` as its first argument.
+
+	# Additional keyword arguments
+	* `palette`: vector of colors for the root nodes.
+	"""
+	function color_lineages!(C::ColorMapping{T}, state;
+		 roots=[one(T)],
 		 palette=default_palette) where T
 
 		P = state.phylogeny
 
-		## Find all vertices which are at most `depth` removed from the root.
-		## Each of which is going to be assigned its own color.
-		## They form the 'inner' part.
-		if depth == -1
-			depth = nv(P)
-		end
-		ring = neighborhood(P, 1, depth, dir=:in)
-		# How many colors are currently in use?
+		# Indices of root nodes
+		iroots = gindex.(Ref(state.meta), roots)
+		# no. of root colors in use
 		j = length(C.inner)
-
-		### Prune inner colors ###
+		# root colors
 		inner_colors = filter(x->x[1] in C.inner, pairs(C.full))
 		C.full = Dict(inner_colors)
 
 		# Assign colors to new genotypes within the inner ring.
-		for ringv in ring
-			g = state.meta[ringv, :genotype]
-			if !in(g, C.inner)
-				push!(C.inner, g)
-				C.full[g] = current_color = palette[j%length(palette)+1]
+		for (root, iroot) in zip(roots, iroots)
+			if !in(root, C.inner)
+				push!(C.inner, root)
+				C.full[root] = current_color = palette[j%length(palette)+1]
 			else
-				current_color = C.full[g]
+				current_color = C.full[root]
 			end
 			# Fill in descendants with the same color
-			for child in neighborhood(P, g, nv(P), dir=:in)
+			for child in neighborhood(P, iroot, nv(P), dir=:in)
 				g_child = state.meta[child, :genotype]
 				C.full[g_child] = current_color
 			end
@@ -67,19 +75,26 @@ module ColorFunctions
 			C.full[s]
 		end
 	end
-	color_phylo(state; depth=2, palette=default_palette, kwargs...) = color_phylo!(min_colors(palette), state; depth, palette, kwargs...)
+
+	function color_depth!(C::ColorMapping, state; depth=2, kwargs...)
+		inner = neighborhood(state.phylogeny, 1, depth, dir=:in)
+		ginner = state.meta[inner, :genotypes]
+		color_lineages!(C, state; roots=ginner, kwargs...)
+	end
+	color_depth(state; depth=2, palette=default_palette, kwargs...) = color_depth!(min_colors(palette), state; depth, palette, kwargs...)
 
 	function color_phylo_by_genomic_distance!(C::ColorMapping, state; depth=1,
 		 palette=reverse(colormap("Blues", 20))
 		)
 		P = state.phylogeny
 
-		C.full = copy(C.inner)
+		inner_colors = filter(x->x[1] in C.inner, pairs(C.full))
+		C.full = Dict(inner_colors)
 
-		for j in 2:length(state.meta.genotypes)
-			l = length(state.meta.snps[j])
+		for j in 2:length(state.meta)
+			l = length(state.meta[j, :snps])
 			# push!(C.full, state.meta.genotypes[j] => palette[l%length(palette)+1])
-			push!(C.full, state.meta.genotypes[j] => palette[min(l, 20)] )
+			push!(C.full, state.meta[j, :genotype] => palette[min(l, 20)] )
 		end
 
 		map(state.lattice.data) do s

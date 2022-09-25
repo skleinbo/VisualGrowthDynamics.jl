@@ -24,7 +24,7 @@ end
 DEFAULT_ATTRIBUTES = Attributes(
     markersize=1,
     size=(800,800),
-    colorfunc=ColorFunctions.color_phylo
+    colorfunc=ColorFunctions.color_depth
 )
 
 @recipe(TumorPlot, state) do scene
@@ -113,10 +113,6 @@ function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:Real
 
     _mesh = meshvertex(typeof(state[].lattice))
     
-    # meshscatter!(p, positions, marker=_mesh, markersize=1,
-    # color=RGBA(0.0,0.0,0.0,1.0),
-    # shading=true, raw=false,strokewidth=5,strokecolor=:black
-    # )
     meshscatter!(p, positions, marker=_mesh, markersize=1.0,
     color=color,
     shading=true, raw=false,strokewidth=5,strokecolor=:black

@@ -1,7 +1,7 @@
 module ColorFunctions
 	using Colors
 	import ..Lattices: intersect_lattice_with_plane, dimension, density
-	using Graphs
+	import Graphs: neighborhood, nv
 	import GrowthDynamics.TumorConfigurations: gindex, TumorConfiguration
 
 	is_leaf(g::SimpleDiGraph, s) = !mapreduce(|, vertices(g)) do in; has_edge(g, in, s) end

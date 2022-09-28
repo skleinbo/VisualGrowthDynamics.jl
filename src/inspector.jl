@@ -27,23 +27,14 @@ function make_dialog_color_depth!(window, fig, color_settings)
     textbox_roots = Textbox(grid[1,2], validator=Int)
     set_textbox_display!(textbox_roots, string(color_settings[][1][:depth]))
 
-    oac_grid = grid[2,1:3]
-    btn_okay, btn_apply, btn_cancel = [Button(oac_grid[1,i], label=l) for (i,l) in enumerate(["Okay","Apply","Cancel"])]
+    oac_grid = grid[2,1]
+    btn_apply = Button(oac_grid[1,1], label="Apply")
 
     on(textbox_roots.stored_string) do s
         color_settings[][1][:depth] = parse(Int, s)
     end
     on(btn_apply.clicks) do _
         notify(color_settings)
-    end
-    on(btn_okay.clicks) do _
-        notify(color_settings)
-        empty!(fig)
-        close(window)
-    end
-    on(btn_cancel.clicks) do _
-        empty!(fig)
-        close(window)
     end
 end
 function make_dialog_color_lineages!(window, fig, color_settings)
@@ -52,23 +43,14 @@ function make_dialog_color_lineages!(window, fig, color_settings)
     textbox_roots = Textbox(grid[1,2], validator=s->validate_css(Int, s))
     set_textbox_display!(textbox_roots, join(color_settings[][2][:roots], ','))
 
-    oac_grid = grid[2,1:3]
-    btn_okay, btn_apply, btn_cancel = [Button(oac_grid[1,i], label=l) for (i,l) in enumerate(["Okay","Apply","Cancel"])]
+    oac_grid = grid[2,1]
+    btn_apply = Button(oac_grid[1,1], label="Apply")
 
     on(textbox_roots.stored_string) do s
         color_settings[][2][:roots] = cs_string_to_vec(Int, s)
     end
     on(btn_apply.clicks) do _
         notify(color_settings)
-    end
-    on(btn_okay.clicks) do _
-        notify(color_settings)
-        empty!(fig)
-        close(window) # FIXME: Sometimes results in a segfault from GLFW
-    end
-    on(btn_cancel.clicks) do _
-        empty!(fig)
-        close(window)
     end
 end
 

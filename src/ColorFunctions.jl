@@ -11,9 +11,9 @@ module ColorFunctions
 		full::Dict{T, <:Colorant}
 	end
 	ColorMapping(seed::Dict{T, <:Colorant}) where T = ColorMapping(collect(keys(seed)), copy(seed))
-	min_colors(palette) = ColorMapping(Dict([0=>colorant"transparent", 1 => palette[1]]))
+	min_colors(palette) = ColorMapping(Dict([0=>colorant"transparent"]))
 
-	default_palette = distinguishable_colors(256, colorant"midnightblue")
+	default_palette = distinguishable_colors(256, Colors.JULIA_LOGO_COLORS[:blue])
 
 	"""
 		lighten(C, p)
@@ -43,7 +43,9 @@ module ColorFunctions
 	"""
 	function color_lineages!(C::ColorMapping{T}, state;
 		 roots=[one(T)],
-		 palette=default_palette) where T
+		 palette=default_palette,
+		 default=colorant"transparent",
+		 kwargs...) where T
 
 		P = state.phylogeny
 
@@ -59,7 +61,7 @@ module ColorFunctions
 		for (root, iroot) in zip(roots, iroots)
 			if !in(root, C.inner)
 				push!(C.inner, root)
-				C.full[root] = current_color = palette[j%length(palette)+1]
+				C.full[root] = current_color = palette[(j-1)%length(palette)+1]
 			else
 				current_color = C.full[root]
 			end
@@ -72,10 +74,11 @@ module ColorFunctions
 		end
 
 		map(state.lattice.data) do s
-			C.full[s]
+			get(C.full, s, default)
 		end
 	end
-
+	color_lineages(state; palette=default_palette, kwargs...) = color_lineages!(min_colors(palette), state; kwargs...)
+	
 	function color_depth!(C::ColorMapping, state; depth=2, kwargs...)
 		inner = neighborhood(state.phylogeny, 1, depth, dir=:in)
 		ginner = state.meta[inner, :genotypes]
@@ -98,7 +101,7 @@ module ColorFunctions
 		end
 
 		map(state.lattice.data) do s
-			C.full[s]
+			get(C.full, s , default)
 		end
 	end
 	color_phylo_by_genomic_distance(state; depth=1, palette=default_palette, kwargs...) = color_phylo_by_genomic_distance!(min_colors(palette), state; depth, palette, kwargs...)

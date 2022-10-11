@@ -84,7 +84,7 @@ function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where 
         color_settings[][i][:palette] = ColorFunctions.default_palette
     end
     color_settings[][:active] = a = 1
-    color_settings[][a][:depth] = 2
+    color_settings[][a][:depth] = 1
 
     plane_dir = Observable(Vec3f(0,0,1))
     plane_offset = Observable(dot(Lattices.midpointcoord(state_obs[].lattice),plane_dir[]))
@@ -96,11 +96,12 @@ function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where 
     grid_plots = fig[1,1] = GridLayout()
 
     grid_controls = fig[1,2] = GridLayout(;tellheight=false)
-    tumor_ax = Axis3(grid_plots[1,1], aspect=:data)
-    tumor_plot = tumorplot!(tumor_ax, state_obs, args...; kwargs...)
+
     limits_origin = (0,0,0)
     limits_lengths = Tuple(coord(state.lattice, size(state.lattice)))
-    limits!(tumor_ax, Rect(limits_origin..., limits_lengths...))
+    lims = Rect(limits_origin..., limits_lengths...)
+    tumor_ax = LScene(grid_plots[1,1], scenekw=(axis=(limits=lims,),))
+    tumor_plot = tumorplot!(tumor_ax, state_obs, args...; kwargs...)
     
     slice_ax = Axis(grid_plots[2,1], aspect=1)
     slice_plot = tumorplot!(slice_ax, state_obs; plane)
@@ -129,7 +130,6 @@ function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where 
             cs[:map] = ColorFunctions.color_lineages
         end
         color_settings[][:active] = selection
-        # update_coloring!(tumor_plot, color_settings)
         notify(color_settings)
     end
 
@@ -219,8 +219,7 @@ function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where 
         bz%2==1 && (v += Vec3f(0,0,1); dir_label*="z")
         plane_dir[] = normalize(v)
         @info "New slice plane $(plane_dir[])"
-        # slice_plot.
     end
 
-    return TumorInspector(fig, tumor_plot, slice_plot, color_settings, plane_settings, radius_settings)
+    return TumorInspector(fig, (tumor_ax, tumor_plot), (slice_ax, slice_plot), color_settings, plane_settings, radius_settings)
 end

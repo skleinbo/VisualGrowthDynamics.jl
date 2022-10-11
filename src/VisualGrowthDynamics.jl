@@ -12,9 +12,10 @@ import GrowthDynamics.Lattices: midpoint, midpointcoord
 import Graphs: neighborhood
 import .Lattices: HexagonalLattice, CubicLattice, FCCLattice, RealLattice, Plane
 import .Lattices: coord, dimension, neighbors, midpoint, spacings
-import LinearAlgebra: dot, normalize
+import LinearAlgebra: dot, norm, normalize
 import Makie: plot!, default_theme, Attributes, to_value, SceneLike, lift, @lift, meshscatter!, arrows!, @recipe
 using Makie
+import FileIO: load
 import StaticArrays: SVector
 import .TumorConfigurations: TumorConfiguration
 
@@ -23,5 +24,7 @@ include("utility.jl")
 include("recipes.jl")
 include("inspector.jl")
 import .ColorFunctions: color_depth, color_lineages
+
+const fccvertex = load(joinpath(@__DIR__, "../assets/fccvertex.obj"))
 
 end # module

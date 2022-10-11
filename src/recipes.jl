@@ -92,28 +92,31 @@ function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:Real
 
     _mesh = meshvertex(typeof(state[].lattice))
     
-    meshscatter!(p, positions, marker=_mesh, markersize=1.0,
-    color=color,
-    shading=true, raw=false,strokewidth=5,strokecolor=:black
+    # Determine marker size
+    markersize = norm(coord(state[].lattice, neighbors(state[].lattice, (1,1,1))[1]))/2
+
+    meshscatter!(p, positions, marker=_mesh, markersize=markersize,
+    color=color
     )
 
     p
 end
 
-meshvertex(::Type{HexagonalLattice{A,B}}) where {A,B} = GeometryBasics.mesh(map([
+meshvertex(::Type{HexagonalLattice}) = GeometryBasics.mesh(map([
     # Vertices of a hex with flat edge down
-    Point2f0(1,0),
-    Point2f0(cos(pi/3),-sin(pi/3)),
-    Point2f0(-cos(pi/3),-sin(pi/3)),
-    Point2f0(-1,0),
-    Point2f0(-cos(pi/3),sin(pi/3)),
-    Point2f0(cos(pi/3),sin(pi/3))
+    Point2f(1,0),
+    Point2f(cos(pi/3),-sin(pi/3)),
+    Point2f(-cos(pi/3),-sin(pi/3)),
+    Point2f(-1,0),
+    Point2f(-cos(pi/3),sin(pi/3)),
+    Point2f(cos(pi/3),sin(pi/3))
     ]/2/Float32(cos(pi/6))) do x
         # Rotation by π/6 --> pointy edge down
-        [Point2f0(cos(pi/6),sin(pi/6)) Point2f0(-sin(pi/6),cos(pi/6))]*x
+        [Point2f(cos(pi/6),sin(pi/6)) Point2f(-sin(pi/6),cos(pi/6))]*x
     end
     )
 
-meshvertex(::Type{CubicLattice{A,B}}) where {A,B} = GeometryBasics.mesh(Rect(Vec3f0(0), Vec3f0(1)))
+meshvertex(::Type{CubicLattice{A,B}}) where {A,B} = GeometryBasics.mesh(Rect(Vec3f(-1), Vec3f(2)))
 # TODO: Vertex for FCC lattice
-meshvertex(::Type{FCCLattice{A,B}}) where {A,B} = GeometryBasics.Sphere(Point3f(0), 1/4)
+# meshvertex(::Type{FCCLattice{A,B}}) where {A,B} = GeometryBasics.Sphere(Point3f(0), 1/4)
+meshvertex(::Type{FCCLattice{A,B}}) where {A,B} = fccvertex

@@ -88,7 +88,8 @@ module ColorFunctions
 	color_depth(state; depth=2, palette=default_palette, kwargs...) = color_depth!(min_colors(palette), state; depth, palette, kwargs...)
 
 	function color_phylo_by_genomic_distance!(C::ColorMapping, state; depth=1,
-		 palette=reverse(colormap("Blues", 20))
+		 palette=reverse(colormap("Blues", 20)),
+		 default=colorant"transparent"
 		)
 		P = state.phylogeny
 
@@ -97,7 +98,6 @@ module ColorFunctions
 
 		for j in 2:length(state.meta)
 			l = length(state.meta[j, :snps])
-			# push!(C.full, state.meta.genotypes[j] => palette[l%length(palette)+1])
 			push!(C.full, state.meta[j, :genotype] => palette[min(l, 20)] )
 		end
 
@@ -163,7 +163,7 @@ module ColorFunctions
 	function hide!(v, A::BitArray)
 		for i in eachindex(v)
 			if !A[i]
-				v[i] = RGBA{Float32}(0., 0., 0., 0.)
+				v[i] = colorant"transparent"
 			end
 		end
 		v

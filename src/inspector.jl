@@ -71,7 +71,7 @@ struct TumorInspector
     radius_settings
 end
 
-function TumorInspector(state::TumorConfiguration{A}, args...; kwargs...) where A<:RealLattice{Int}
+function TumorInspector(state::TumorConfiguration{Int,A}, args...; kwargs...) where A<:RealLattice{Int}
     state_obs = Observable(state)
 
     color_settings = Observable(Dict())

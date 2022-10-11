@@ -18,15 +18,15 @@ DEFAULT_ATTRIBUTES = Attributes(
     )
 end
 
-function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{A}}}) where A<:RealLattice{Int}
+function Makie.plot!(p::TumorPlot{Tuple{<:TumorConfiguration{G, A}}}) where {G, A<:RealLattice{Int}}
     state = p[:state]
     sz = lift(s->size(s.lattice), state)
 
     geno_filter = lift(state, p[:genotype]) do state, genotype
         if isnothing(genotype) || iszero(genotype)
-            state.meta.genotypes
+            state.meta[:, :genotype]
         else
-            state.meta.genotypes[neighborhood(state.phylogeny, genotype, typemax(Int64); dir=:in)]
+            state.meta[neighborhood(state.phylogeny, genotype, typemax(Int64); dir=:in), :genotype]
         end
     end
     @debug geno_filter[]

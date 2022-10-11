@@ -3,7 +3,7 @@ module ColorFunctions
 	import ..Lattices: intersect_lattice_with_plane, dimension, density
 	import Graphs: has_edge, neighborhood, nv, SimpleDiGraph, vertices
 	import GrowthDynamics.Lattices: neighbors
-	import GrowthDynamics.TumorConfigurations: gindex, TumorConfiguration
+	import GrowthDynamics.TumorConfigurations: index, TumorConfiguration
 
 	is_leaf(g::SimpleDiGraph, s) = !mapreduce(|, vertices(g)) do in; has_edge(g, in, s) end
 
@@ -51,7 +51,7 @@ module ColorFunctions
 		P = state.phylogeny
 
 		# Indices of root nodes
-		iroots = gindex.(Ref(state.meta), roots)
+		iroots = index.(Ref(state.meta), roots)
 		# no. of root colors in use
 		j = length(C.inner)
 		# root colors
@@ -82,7 +82,7 @@ module ColorFunctions
 	
 	function color_depth!(C::ColorMapping, state; depth=2, kwargs...)
 		inner = neighborhood(state.phylogeny, 1, depth, dir=:in)
-		ginner = state.meta[inner, :genotypes]
+		ginner = state.meta[inner, :genotype]
 		color_lineages!(C, state; roots=ginner, kwargs...)
 	end
 	color_depth(state; depth=2, palette=default_palette, kwargs...) = color_depth!(min_colors(palette), state; depth, palette, kwargs...)

@@ -1,4 +1,5 @@
 using VisualGrowthDynamics
+using GrowthDynamics
 using Test
 
 @testset "VisualGrowthDynamics.jl" begin

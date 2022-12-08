@@ -1,0 +1,6 @@
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+GrowthDynamics = "708a6a61-856c-5d7f-acbf-fcf0902d75eb"
+MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
+Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
